@@ -9,8 +9,8 @@ load_dotenv()
 
 IMAP_SERVER = "127.0.0.1"  # pour Proton Mail Bridge : 127.0.0.1
 IMAP_PORT = 1143           # pour Bridge en mode non chiffré
-USERNAME = os.getenv("USERNAME")
-PASSWORD = os.getenv("PASSWORD")
+USERNAME = os.getenv("USR")
+PASSWORD = os.getenv("PWD")
 EML_FOLDER = os.getenv("EML_FOLDER")
 
 #MAILBOX = '"All Mail"'          # boîte à nettoyer
@@ -101,20 +101,33 @@ def import_eml_if_new(mail, existing_ids):
         msgid = msgid.strip()
 
         if msgid in existing_ids:
-            print(f"[=] SKIP (already exists): {filename}")
+            try:
+                print(f"[=] SKIP (already exists): {filename}")
+            except:
+                print(f"[=] SKIP (already exists): error on filename code")
             continue
 
-        print(f"[+] Importing: {filename}")
+        try:
+            print(f"[+] Importing: {filename}")
+        except:
+            print(f"[+] Importing: error on filename code")
+
 
         # Upload (APPEND) to Proton Mail
         try:
             raw = fix_eml_headers(raw)
             result = mail.append(MAILBOX, r"(\Seen)", None, raw)
             if result[0] == "OK":
-                print(f"[✓] Imported: {filename}")
+                try:
+                    print(f"[✓] Imported: {filename}")
+                except:
+                    print(f"[✓] Imported: error on filename code")
                 existing_ids.add(msgid)
             else:
-                print(f"[!] FAILED to import: {filename} — {result}")
+                try:
+                    print(f"[!] FAILED to import: {filename} — {result}")
+                except:
+                    print(f"[!] FAILED to import: error on filename code")
         except Exception as e:
             print(f"Error on imap - {e}")
 
