@@ -109,7 +109,7 @@ def import_eml_if_new(mail, existing_ids):
         # Upload (APPEND) to Proton Mail
         try:
             raw = fix_eml_headers(raw)
-            result = mail.append(MAILBOX, "", None, raw)
+            result = mail.append(MAILBOX, r"(\Seen)", None, raw)
             if result[0] == "OK":
                 print(f"[✓] Imported: {filename}")
                 existing_ids.add(msgid)
