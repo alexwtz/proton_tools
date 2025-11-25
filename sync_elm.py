@@ -1,5 +1,7 @@
 import imaplib
 import email
+import json
+
 from dotenv import load_dotenv
 import os
 from email import policy
@@ -80,41 +82,46 @@ def get_existing_message_ids(mail):
     return message_ids
 
 def import_eml_if_new(mail, existing_ids):
+    cnt_mail = 1
     for filename in os.listdir(EML_FOLDER):
-        if not filename.lower().endswith(".eml"):
-            continue
-
         try:
-            filepath = os.path.join(EML_FOLDER, filename)
-            with open(filepath, "rb") as f:
-                raw = f.read()
-        except Exception as e:
-            print(f"[!] Failed to read file - {e}")
-            continue
-        msg = email.message_from_bytes(raw)
-        msgid = msg.get("Message-ID")
+            if cnt_mail % 1000 == 0:
+                print(f"Already checked {cnt_mail} e-mails")
+            cnt_mail = cnt_mail + 1
 
-        if not msgid:
-            print(f"[!] {filename} has NO Message-ID — skipping")
-            continue
+            if not filename.lower().endswith(".eml"):
+                continue
 
-        msgid = msgid.strip()
-
-        if msgid in existing_ids:
             try:
-                print(f"[=] SKIP (already exists): {filename}")
-            except:
-                print(f"[=] SKIP (already exists): error on filename code")
-            continue
+                filepath = os.path.join(EML_FOLDER, filename)
+                with open(filepath, "rb") as f:
+                    raw = f.read()
+            except Exception as e:
+                print(f"[!] Failed to read file - {e}")
+                continue
+            msg = email.message_from_bytes(raw)
+            msgid = msg.get("Message-ID")
 
-        try:
-            print(f"[+] Importing: {filename}")
-        except:
-            print(f"[+] Importing: error on filename code")
+            if not msgid:
+                print(f"[!] {filename} has NO Message-ID — skipping")
+                continue
 
+            msgid = msgid.strip()
 
-        # Upload (APPEND) to Proton Mail
-        try:
+            if msgid in existing_ids:
+                #try:
+                #    print(f"[=] SKIP (already exists): {filename}")
+                #except:
+                #    print(f"[=] SKIP (already exists): error on filename code")
+                continue
+
+            #try:
+            #    print(f"[+] Importing: {filename}")
+            #except:
+            #    print(f"[+] Importing: error on filename code")
+
+            # Upload (APPEND) to Proton Mail
+
             raw = fix_eml_headers(raw)
             result = mail.append(MAILBOX, r"(\Seen)", None, raw)
             if result[0] == "OK":
@@ -129,18 +136,24 @@ def import_eml_if_new(mail, existing_ids):
                 except:
                     print(f"[!] FAILED to import: error on filename code")
         except Exception as e:
-            print(f"Error on imap - {e}")
+            print(f"[!] Failed to import: {e}")
+            mail = imaplib.IMAP4(IMAP_SERVER, IMAP_PORT)
+            mail.login(USERNAME, PASSWORD)
 
 def main():
+
+
     mail = imaplib.IMAP4(IMAP_SERVER, IMAP_PORT)
     mail.login(USERNAME, PASSWORD)
 
-    existing_ids = get_existing_message_ids(mail)
+    if os.path.exists("existing_ids.json"):
+        existing_ids = set(json.load(open("existing_ids.json")))
+    else:
+        existing_ids = get_existing_message_ids(mail)
+        json.dump(list(existing_ids), open("existing_ids.json", "w"))
+
     import_eml_if_new(mail, existing_ids)
 
-    mail.logout()
     print("[✓] Done.")
-
-
 if __name__ == "__main__":
     main()
