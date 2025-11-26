@@ -14,6 +14,7 @@ IMAP_PORT = 1143           # pour Bridge en mode non chiffré
 USERNAME = os.getenv("USR")
 PASSWORD = os.getenv("PWD")
 EML_FOLDER = os.getenv("EML_FOLDER")
+EML_ARCHIVE = os.getenv("EML_ARCHIVE")
 
 #MAILBOX = '"All Mail"'          # boîte à nettoyer
 MAILBOX="INBOX"
@@ -81,13 +82,16 @@ def get_existing_message_ids(mail):
     print(f"[+] Existing messages: {len(message_ids)}")
     return message_ids
 
-def import_eml_if_new(mail, existing_ids):
-    cnt_mail = 1
+def import_eml_if_new(mail, existing_ids,restart=-1):
+    cnt_mail = 0
+    nb_file = len(os.listdir(EML_FOLDER))
     for filename in os.listdir(EML_FOLDER):
         try:
-            if cnt_mail % 1000 == 0:
-                print(f"Already checked {cnt_mail} e-mails")
             cnt_mail = cnt_mail + 1
+            if cnt_mail % 1000 == 0:
+                print(f"Already checked {cnt_mail}/{nb_file} e-mails")
+            if restart > -1 and restart > cnt_mail:
+                continue
 
             if not filename.lower().endswith(".eml"):
                 continue
@@ -113,6 +117,12 @@ def import_eml_if_new(mail, existing_ids):
                 #    print(f"[=] SKIP (already exists): {filename}")
                 #except:
                 #    print(f"[=] SKIP (already exists): error on filename code")
+                import shutil
+
+
+                dst = os.path.join(EML_ARCHIVE, filename)
+
+                shutil.move(filepath, dst)
                 continue
 
             #try:
@@ -126,7 +136,7 @@ def import_eml_if_new(mail, existing_ids):
             result = mail.append(MAILBOX, r"(\Seen)", None, raw)
             if result[0] == "OK":
                 try:
-                    print(f"[✓] Imported: {filename}")
+                    print(f"[{round(cnt_mail/nb_file*100,1)}%]-[{cnt_mail}] Imported: {filename}")
                 except:
                     print(f"[✓] Imported: error on filename code")
                 existing_ids.add(msgid)
